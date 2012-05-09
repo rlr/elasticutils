@@ -169,7 +169,6 @@ class S(object):
         self.stop = None
         self.as_list = self.as_dict = False
         self._results_cache = None
-        self._query_fields = set()
         self._highlight_fields = []
         self._highlight_options = {}
         self._weights = {}
@@ -183,7 +182,6 @@ class S(object):
     def _clone(self, next_step=None):
         new = self.__class__(self.type)
         new.steps = list(self.steps)
-        new._query_fields = self._query_fields.copy()
         new._weights = self._weights.copy()
         if next_step:
             new.steps.append(next_step)
@@ -213,22 +211,13 @@ class S(object):
         """
         return self._clone(next_step=('order_by', fields))
 
-    def query(self, *args, **kw):
+    def query(self, **kw):
         """
         Returns a new S instance with the query args combined to the existing
         set.
 
-        Take either a single arg (which is text to be matched against any of
-        the fields specified by ``query_fields()``) or a series of kwargs
-        which set comparison values for each field separately.
         """
-        if bool(args) == bool(kw):
-            raise TypeError('query() takes either an arg or one or more kwargs.')
-        if kw:
-            return self._clone(next_step=('query', kw.items()))
-        if len(args) != 1:
-            return TypeError('query() takes at most one non-keyword argument.')
-        return self._clone(next_step=('query_default_fields', args[0]))
+        return self._clone(next_step=('query', kw.items()))
 
     def weight(self, **kw):
         """
@@ -242,11 +231,11 @@ class S(object):
         specified weights, though later references to the same field override
         earlier ones.
 
-        Weights apply only to fields mentioned in the call to ``query()`` or
-        implicitly used due to a previous call to ``query_fields``.
+        Weights apply only to fields mentioned in the call to ``query()``.
 
-        Note: If we need to clear weights, add a ``clear_weights()`` method. If
-        we ever need index boosting, ``weight_indices()`` might be nice.
+        Note: If we need to clear weights, add a ``clear_weights()``
+        method. If we ever need index boosting, ``weight_indices()``
+        might be nice.
 
         """
         new = self._clone()
@@ -288,26 +277,6 @@ class S(object):
         # of before_match and after_match tags. ES can highlight more
         # significant stuff brighter.
         return self._clone(next_step=('highlight', (highlight_fields, kwargs)))
-
-    def query_fields(self, *args):
-        """
-        Add to the fields that a single-arg call to ``query()`` will query.
-
-        A call like this... ::
-
-            s.query_fields('a', 'b__text').query('woot')
-
-        is equivalent to... ::
-
-            s.query(or_=dict(a='woot', b='woot'))
-
-        """
-        new = self._clone()
-        # Use a dedicated field for the query_fields so we're guaranteed to
-        # have them in place before _build_query() processes any query() steps
-        # that use them.
-        new._query_fields |= set(args)
-        return new
 
     def extra(self, **kw):
         """
@@ -355,7 +324,7 @@ class S(object):
         filters = []
         queries = []
         sort = []
-        fields = []
+        fields = set(['id'])
         facets = {}
         as_list = as_dict = False
         for action, value in self.steps:
@@ -367,19 +336,16 @@ class S(object):
                     else:
                         sort.append(key)
             elif action == 'values':
-                fields.extend(value)
+                fields |= set(value)
                 as_list, as_dict = True, False
             elif action == 'values_dict':
                 if not value:
-                    fields = []
+                    fields = set()
                 else:
-                    fields.extend(value)
+                    fields |= set(value)
                 as_list, as_dict = False, True
             elif action == 'query':
                 queries.extend(self._process_queries(value))
-            elif action == 'query_default_fields':
-                queries.extend(self._process_queries(
-                    {'or_': dict((f, value) for f in self._query_fields)}))
             elif action == 'filter':
                 filters.extend(_process_filters(value))
             elif action == 'facet':
@@ -401,14 +367,8 @@ class S(object):
         elif queries:
             qs['query'] = queries[0]
 
-        # Add ID into fields if necessary:
-        if (as_list or (as_dict and fields)) and 'id' not in fields:
-            fields.append('id')
-        elif not (as_list or as_dict):
-            fields.append('id')
-
         if fields:
-            qs['fields'] = fields
+            qs['fields'] = list(fields)
         if facets:
             qs['facets'] = facets
             # Copy filters into facets. You probably wanted this.

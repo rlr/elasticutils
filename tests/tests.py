@@ -199,9 +199,8 @@ def test_weight_startswith():
 
 def test_weight_multiple():
     """Test that multiple weights are properly applied."""
-    eq_(S(FakeModel).query_fields('fld1', 'fld2__text')
-                    .weight(fld1=2, fld2__text=7)
-                    .query('qux')
+    eq_(S(FakeModel).weight(fld1=2, fld2__text=7)
+                    .query(or_=dict(fld1='qux', fld2__text='qux'))
                     ._build_query(),
         {"query":
             {"bool":
@@ -210,20 +209,6 @@ def test_weight_multiple():
                      {"term": {"fld1": {"value": "qux", "boost": 2}}}]}},
          "fields":
             ["id"]})
-
-
-def test_query_fields():
-    """Make sure queries against a default set of fields works."""
-    implicit = S(FakeModel).query_fields('fld1', 'fld2__text').query('boo')
-    explicit = S(FakeModel).query(or_=dict(fld1='boo', fld2__text='boo'))
-    eq_(implicit._build_query(), explicit._build_query())
-
-
-def test_query_type_error():
-    """``query()`` should throw a ``TypeError`` when called with neither or
-    both args and kwargs."""
-    assert_raises(TypeError, S(FakeModel).query)
-    assert_raises(TypeError, S(FakeModel).query, 'hey', frob='yo')
 
 
 def test_highlight_query():
