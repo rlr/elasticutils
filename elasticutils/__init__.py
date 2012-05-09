@@ -231,7 +231,8 @@ class S(object):
         specified weights, though later references to the same field override
         earlier ones.
 
-        Weights apply only to fields mentioned in the call to ``query()``.
+        Weights apply only to fields (with actions) mentioned in the call
+        to ``query()``.
 
         Note: If we need to clear weights, add a ``clear_weights()``
         method. If we ever need index boosting, ``weight_indices()``
@@ -405,7 +406,7 @@ class S(object):
                    'fuzzy': 'fuzzy'}
 
     def _process_queries(self, value):
-        def _weighted_key_value(value):
+        def _weighted_key_value(field, key, value):
             """
             Return a key-value pair in the format ES queries need.
 
@@ -425,9 +426,9 @@ class S(object):
             field, action = _split(key)
             if action in ('gt', 'gte', 'lt', 'lte'):
                 rv.append(
-                    {'range': {field: _weighted_key_value({action: val})}})
+                    {'range': {field: _weighted_key_value(field, key, {action: val})}})
             else:
-                rv.append({self._action_map[action]: _weighted_key_value(val)})
+                rv.append({self._action_map[action]: _weighted_key_value(field, key, val)})
         if or_:
             rv.append({'bool': {'should': self._process_queries(or_.items())}})
         return rv
