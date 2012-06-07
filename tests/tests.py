@@ -65,6 +65,13 @@ class QueryTest(TestCase):
         eq_(len(S(FakeModel).filter(tag='awesome')), 3)
         eq_(len(S(FakeModel).filter(F(tag='awesome'))), 3)
 
+    def test_filter_empty_f(self):
+        eq_(len(S(FakeModel).filter(F() | F(tag='awesome'))), 3)
+        eq_(len(S(FakeModel).filter(F() & F(tag='awesome'))), 3)
+        eq_(len(S(FakeModel).filter(F() | F() | F(tag='awesome'))), 3)
+        eq_(len(S(FakeModel).filter(F() & F() & F(tag='awesome'))), 3)
+        eq_(len(S(FakeModel).filter(F())), 5)
+
     def test_filter_and(self):
         eq_(len(S(FakeModel).filter(tag='awesome', foo='bar')), 1)
         eq_(len(S(FakeModel).filter(tag='awesome').filter(foo='bar')), 1)
