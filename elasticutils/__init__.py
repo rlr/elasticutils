@@ -203,6 +203,12 @@ class S(object):
         """
         return self._clone(next_step=('values', fields))
 
+    def explain(self, value=True):
+        """
+        Return a new S instance with explain set.
+        """
+        return self._clone(next_step=('explain', value))
+
     def values_dict(self, *fields):
         """
         Returns a new S instance whose SearchResults will be of the class
@@ -332,6 +338,7 @@ class S(object):
         sort = []
         fields = set(['id'])
         facets = {}
+        explain = False
         as_list = as_dict = False
         for action, value in self.steps:
             if action == 'order_by':
@@ -350,6 +357,8 @@ class S(object):
                 else:
                     fields |= set(value)
                 as_list, as_dict = False, True
+            elif action == 'explain':
+                explain = value
             elif action == 'query':
                 queries.extend(self._process_queries(value))
             elif action == 'filter':
@@ -390,6 +399,9 @@ class S(object):
 
         if self._highlight_fields:
             qs['highlight'] = self._build_highlight()
+
+        if explain:
+            qs['explain'] = True
 
         self.fields, self.as_list, self.as_dict = fields, as_list, as_dict
         return qs
@@ -567,8 +579,12 @@ class ObjectSearchResults(SearchResults):
 
 
 def _decorate_with_metadata(obj, hit):
-    """Return obj decorated with _highlighted, _score, and _type"""
+    """Return obj decorated with hit-scope metadata."""
     obj._highlighted = hit.get('highlight', {})
+    # The search result score
     obj._score = hit.get('_score')
+    # The document type
     obj._type = hit.get('_type')
+    # Explanation structure
+    obj._explanation = hit.get('_explanation', {})
     return obj
