@@ -1,21 +1,31 @@
 from django.conf import settings
 
-from elasticutils import MappingType
+from elasticutils import MappingType, NoModelError
 from elasticutils.contrib.django import get_es, S
 
 
 class DjangoMappingType(MappingType):
     """This has most of the pieces you need to tie back toa Django ORM model.
 
-    Subclass this and override the following:
-
-    * get_model
-
-      This should return the Django ORM model class.
+    Subclass this and override at least `get_model`.
 
     """
     def get_object(self):
         return self.get_model().get(pk=self._id)
+
+    @classmethod
+    def get_model(cls):
+        """Return the model related to this DjangoMappingType.
+
+        This can be any class that has an instance related to this
+        DjangoMappingtype by id.
+
+        Override this to return a model class.
+
+        :returns: model class
+
+        """
+        raise NoModelError
 
     @classmethod
     def get_index(cls):
@@ -52,7 +62,11 @@ class DjangoMappingType(MappingType):
 
     @classmethod
     def search(cls):
-        """Returns a typed S for this class."""
+        """Returns a typed S for this class.
+
+        :returns: an `S`
+
+        """
         return S(cls)
 
 
