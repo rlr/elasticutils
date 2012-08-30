@@ -114,8 +114,8 @@ indexing-related code.
 For example, here's a minimal `DjangoMappingType` subclass::
 
     from django.models import Model
-
     from elasticutils.contrib.django.models import DjangoMappingType
+
 
     class MyModel(Model):
         ...
@@ -132,8 +132,8 @@ For example, here's a minimal `DjangoMappingType` subclass::
 Here's one that uses `Indexable` and handles indexing::
 
     from django.models import Model
-
     from elasticutils.contrib.django.models import DjangoMappingType
+
 
     class MyModel(Model):
         ...
@@ -172,8 +172,8 @@ explicitly specifying `.get_mapping()`.
 ::
 
     from django.models import Model
-
     from elasticutils.contrib.django.models import DjangoMappingType
+
 
     class MyModel(Model):
         ...
