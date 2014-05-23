@@ -1531,6 +1531,60 @@ class SuggestionTest(ESTestCase):
         eq_(options, ['mark'])
 
 
+class SuggestionCompletionTest(ESTestCase):
+    mapping = {
+        ESTestCase.mapping_type_name: {
+            'properties': {
+                'id': {'type': 'integer'},
+                'name': {'type': 'string'},
+                'suggest' : {
+                    'type' : 'completion',
+                    'index_analyzer' : 'simple',
+                    'search_analyzer' : 'simple',
+                    'payloads' : True,
+                }
+            },
+        }
+    }
+
+    data = [
+        {
+            'id': 1,
+            'name': 'bar',
+            'suggest': {
+                'input': ['bar', 'cheers'],
+                'output': 'bar - cheers',
+                'payload': {'id': 1},
+            },
+        },
+        {
+            'id': 2,
+            'name': 'candy',
+            'suggest': {
+                'input': ['candy', 'bar'],
+                'output': 'candy - bar',
+                'payload': {'id': 2},
+            },
+        },
+        {
+            'id': 3,
+            'name': 'waves',
+            'suggest': {
+                'input': ['waves', 'surf'],
+                'output': 'waves - surf',
+                'payload': {'id': 3},
+            },
+        },
+    ]
+
+    @require_version('0.90')
+    def test_suggestion_completion(self):
+        s = self.get_s().suggest('mysuggest', 'bar', 'completion', field='suggest')
+        suggestions = s.suggestions()
+        options = [o['text'] for o in suggestions['mysuggest'][0]['options']]
+        eq_(options, ['bar - cheers', 'candy - bar'])
+
+
 def test_to_python():
     def check_to_python(obj, expected):
         eq_(S().to_python(obj), expected)

@@ -1003,11 +1003,12 @@ class S(PythonMixin):
         """
         return self._clone(next_step=('search_type', search_type))
 
-    def suggest(self, name, term, **kwargs):
+    def suggest(self, name, term, type_='term', **kwargs):
         """Set suggestion options.
 
         :arg name: The name to use for the suggestions.
-        :arg term: The term to suggest similar looking terms for.
+        :arg term: The text to suggest from.
+        :arg type_: The suggest type (term, completion, ...). Default: term
 
         Additional keyword options:
 
@@ -1023,7 +1024,7 @@ class S(PythonMixin):
            Calling this multiple times will add multiple suggest clauses to
            the query.
         """
-        return self._clone(next_step=('suggest', (name, term, kwargs)))
+        return self._clone(next_step=('suggest', (name, term, type_, kwargs)))
 
     def extra(self, **kw):
         """
@@ -1127,7 +1128,7 @@ class S(PythonMixin):
             elif action == 'search_type':
                 search_type = value
             elif action == 'suggest':
-                suggestions[value[0]] = (value[1], value[2])
+                suggestions[value[0]] = (value[1], value[2], value[3])
             elif action in ('es', 'indexes', 'doctypes', 'boost'):
                 # Ignore these--we use these elsewhere, but want to
                 # make sure lack of handling it here doesn't throw an
@@ -1201,10 +1202,10 @@ class S(PythonMixin):
         if explain:
             qs['explain'] = True
 
-        for suggestion, (term, kwargs) in six.iteritems(suggestions):
+        for suggestion, (term, type_, kwargs) in six.iteritems(suggestions):
             qs.setdefault('suggest', {})[suggestion] = {
                 'text': term,
-                'term': {
+                type_: {
                     'field': kwargs.get('field', '_all'),
                 },
             }
